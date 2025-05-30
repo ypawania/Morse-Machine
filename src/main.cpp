@@ -1,23 +1,24 @@
 #include <Arduino.h>
 #include <avr/pgmspace.h> // For storing strings in program memory
 
-// Morse code table
-// Define a structure to hold Morse code letters and their corresponding codes
-struct morseEntry {
-  char letter;
-  char* code;
-};
-
 //Arduino pin definations
 #define MORSE_IN 8
+#define MODE_SELECT_PIN A0
 
 //Function declarations
-String detectButtonPress();
-morseEntry getMorseEntry(int index);
+char detectButtonPress();
+char* getMorseEntry(int index);
+void modeSelect();
+void learn();
+void display(char letter, char* morseCode);
+char nextLetter();
 
 //Constants
 const uint32_t DEBOUNCETIME = 50; // Minimum time to debounce a button press
 const uint32_t DASHTIME = 700; // Minimum time to consider a button press as a dash
+const uint32_t REFRESHTIME = 4000; // Time to refresh input state
+
+bool learnMode, testMode, transmitMode;
 
 void setup() {
   Serial.begin(9600);
@@ -26,43 +27,59 @@ void setup() {
 }
 
 void loop() {
-  detectButtonPress();
+  /**learnMode = true;
+  if (learnMode) {
+    learn();
+  } **/
+  char buttonPress = detectButtonPress();
+  if (buttonPress != '\0'){
+    Serial.println(buttonPress);
+  }
+
 }
 
 // Function to detect button press and return the type of press
 // Returns "dot", "dash", or "debounce" based on the duration of the button press
-String detectButtonPress() {
+char detectButtonPress() {
   uint32_t currentMillis = millis();
   static uint32_t lastMillis = 0;
-  static bool buttonState = digitalRead(MORSE_IN);
-  static bool lastButtonState = HIGH;
+  bool buttonState = digitalRead(MORSE_IN);
+  static bool lastButtonState = buttonState;
+
+  char result = '\0';
 
   if (buttonState != lastButtonState) {
+    lastButtonState = buttonState;
     if (buttonState == HIGH) {
       lastMillis = currentMillis;
     }
     else {
       uint32_t duration = currentMillis - lastMillis;
-      if (duration >= DASHTIME) {
-        return "dash";
+      if (duration > REFRESHTIME) {  // used elsewhere to refresh input state
+        result = 'r';
+      }
+      else if (duration >= DASHTIME) {
+        result = '-';
       }
       else if (duration >= DEBOUNCETIME) {
-        return "dot";
+        result = '.';
       }
       else {
-        return "debounce";
+        result = 'd';
       }
     }
   }
+  return result;
 }
 
 // Morse code table
 // Define a structure to hold Morse code letters and their corresponding codes
-// The Morse code strings are stored in program memory to save RAM space
 struct morseEntry {
   char letter;
   char* code;
 };
+
+// The Morse code strings are stored in program memory to save RAM space
 const morseEntry morseTable[] PROGMEM = {
   {'A', ".-"},
   {'B', "-..."},
@@ -92,15 +109,73 @@ const morseEntry morseTable[] PROGMEM = {
   {'Z', "--.."}
 };
 
-// Function to get Morse Letter and Code for a given index
-morseEntry getMorseEntry(int index) {
+
+// Function to get Morse code entry for a specific letter
+char* getMorseEntry(char letter) {
   const int MORSE_TABLE_SIZE = sizeof(morseTable) / sizeof(morseEntry);
-  if (index < 0 || index > MORSE_TABLE_SIZE -1) {
-    return {'?', ""}; // Return a default entry for invalid index
+  if (letter < 'A' || letter > 'Z') {
+    return ""; // Return empty string for invalid letters
   }
-  morseEntry entry;
-  entry.letter = pgm_read_byte(&morseTable[index].letter);
-  entry.code = (char*)pgm_read_word(&morseTable[index].code);
-  return entry;
+  return (char*) pgm_read_word(&morseTable[letter - 'A'].code);
 }
 
+void learn() {
+  String input = "";
+  Serial.println("Entering learn mode...");
+  while (learnMode) {
+    char letter = nextLetter();
+    char* morseCode = getMorseEntry(letter);
+    display(letter, morseCode);
+    
+    while (input != morseCode && learnMode) {
+      char buttonPress = detectButtonPress();
+      
+      if (buttonPress == 'd') {
+        continue; // debounce, ignore this press
+      }
+      else if (buttonPress == 'r') {
+        Serial.println("Refreshing input state...");
+        input = ""; // Reset input state
+        continue; // Refresh input state
+      }
+      
+      // If a valid button press is detected, append it to the input string
+      else if (buttonPress == '.' || buttonPress == '-') {
+        input += buttonPress;
+        Serial.print("Detected button press: ");
+        Serial.println(buttonPress);
+      }
+    }
+  }
+}
+
+char nextLetter() {
+  int randomIndex = random(0, 26); 
+  return randomIndex + 'A'; 
+}
+
+void display(char letter, char* morseCode) {
+  Serial.print(letter);
+  Serial.print(": ");
+  Serial.println(morseCode);
+}
+
+void modeSelect() {
+  int potValue = analogRead(MODE_SELECT_PIN);
+  if (potValue < 250) {
+    learnMode = true;
+    testMode = false;
+    transmitMode = false;
+  }
+  else if (potValue > 1023 - 250) {
+    testMode = true;
+    learnMode = false;
+    transmitMode = false;
+  }
+  else {
+    transmitMode = true;
+    learnMode = false;
+    testMode = false;
+  }
+
+}
