@@ -15,8 +15,8 @@ char nextLetter();
 
 //Constants
 const uint32_t DEBOUNCETIME = 50; // Minimum time to debounce a button press
-const uint32_t DASHTIME = 700; // Minimum time to consider a button press as a dash
-const uint32_t REFRESHTIME = 4000; // Time to refresh input state
+const uint32_t DASHTIME = 200; // Minimum time to consider a button press as a dash
+const uint32_t REFRESHTIME = 1000; // Time to refresh input state
 
 bool learnMode, testMode, transmitMode;
 
@@ -24,18 +24,22 @@ void setup() {
   Serial.begin(9600);
   pinMode(LED_BUILTIN, OUTPUT);
   pinMode(MORSE_IN, INPUT);
+
 }
 
 void loop() {
-  /**learnMode = true;
+  modeSelect(); // Select the mode based on the potentiometer value
   if (learnMode) {
     learn();
-  } **/
-  char buttonPress = detectButtonPress();
-  if (buttonPress != '\0'){
-    Serial.println(buttonPress);
+  } 
+  else if (testMode) {
+    Serial.println("Test mode not implemented yet.");
+    // Implement test mode functionality here
+  } 
+  else if (transmitMode) {
+    Serial.println("Transmit mode not implemented yet.");
+    // Implement transmit mode functionality here
   }
-
 }
 
 // Function to detect button press and return the type of press
@@ -128,9 +132,10 @@ void learn() {
     display(letter, morseCode);
     
     while (input != morseCode && learnMode) {
+      modeSelect(); // Check the mode in case it has changed
       char buttonPress = detectButtonPress();
       
-      if (buttonPress == 'd') {
+      if (buttonPress == 'd' || buttonPress == '\0') {
         continue; // debounce, ignore this press
       }
       else if (buttonPress == 'r') {
@@ -142,8 +147,12 @@ void learn() {
       // If a valid button press is detected, append it to the input string
       else if (buttonPress == '.' || buttonPress == '-') {
         input += buttonPress;
-        Serial.print("Detected button press: ");
-        Serial.println(buttonPress);
+        Serial.print(buttonPress);
+        if (input == morseCode) {
+          Serial.println(" - Correct input!");
+          input = ""; // Reset input after correct entry
+          morseCode = ""; // Reset morseCode to empty to trigger while loop exit 
+        }
       }
     }
   }
