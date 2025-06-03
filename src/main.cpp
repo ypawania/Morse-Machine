@@ -10,7 +10,7 @@ char detectButtonPress();
 char* getMorseEntry(int index);
 void modeSelect();
 void learn();
-void display(char letter, char* morseCode);
+void display(String message);
 char nextLetter();
 
 //Constants
@@ -20,6 +20,15 @@ const uint32_t REFRESHTIME = 1000; // Time to refresh input state
 
 bool learnMode, testMode, transmitMode;
 
+enum Mode {
+  LEARN,
+  TEST,
+  TRANSMIT,
+  NONE
+};
+
+Mode currentMode = NONE;
+
 void setup() {
   Serial.begin(9600);
   pinMode(LED_BUILTIN, OUTPUT);
@@ -28,17 +37,15 @@ void setup() {
 }
 
 void loop() {
-  modeSelect(); // Select the mode based on the potentiometer value
-  if (learnMode) {
+  modeSelect();
+  if (currentMode == LEARN) {
     learn();
   } 
-  else if (testMode) {
+  else if (currentMode == TEST) {
     Serial.println("Test mode not implemented yet.");
-    // Implement test mode functionality here
   } 
-  else if (transmitMode) {
+  else if (currentMode == TRANSMIT) {
     Serial.println("Transmit mode not implemented yet.");
-    // Implement transmit mode functionality here
   }
 }
 
@@ -125,18 +132,13 @@ char* getMorseEntry(char letter) {
 
 void learn() {
   String input = "";
-  Serial.println("Entering learn mode...");
-  while (learnMode) {
+  while (currentMode == LEARN) {
     char letter = nextLetter();
     String morseCode = getMorseEntry(letter);
-    String displayString = String(letter);
-    if (!testMode){
-      displayString += ": " + morseCode;
-    }
+    String displayString = String(letter) + ": " + morseCode;
     display(displayString);
-    
-    while (input != morseCode && learnMode) {
-      modeSelect(); // Check the mode in case it has changed
+
+    while (input != morseCode && currentMode == LEARN) {
       char buttonPress = detectButtonPress();
       
       if (buttonPress == 'd' || buttonPress == '\0') {
@@ -174,19 +176,15 @@ void display(String message ) {
 void modeSelect() {
   int potValue = analogRead(MODE_SELECT_PIN);
   if (potValue < 250) {
-    learnMode = true;
-    testMode = false;
-    transmitMode = false;
+    if (currentMode != LEARN) Serial.println("Entering learn mode...");
+    currentMode = LEARN;
   }
   else if (potValue > 1023 - 250) {
-    testMode = true;
-    learnMode = false;
-    transmitMode = false;
+    if (currentMode != TEST) Serial.println("Entering test mode...");
+    currentMode = TEST;
   }
   else {
-    transmitMode = true;
-    learnMode = false;
-    testMode = false;
+    if (currentMode != TRANSMIT) Serial.println("Entering transmit mode...");
+    currentMode = TRANSMIT;
   }
-
 }
