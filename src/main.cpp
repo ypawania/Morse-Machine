@@ -9,7 +9,7 @@
 char detectButtonPress();
 char* getMorseEntry(int index);
 void modeSelect();
-void learn();
+void practice();
 void display(String message);
 char nextLetter();
 
@@ -38,11 +38,8 @@ void setup() {
 
 void loop() {
   modeSelect();
-  if (currentMode == LEARN) {
-    learn();
-  } 
-  else if (currentMode == TEST) {
-    Serial.println("Test mode not implemented yet.");
+  if (currentMode == LEARN || currentMode == TEST) {
+    practice();
   } 
   else if (currentMode == TRANSMIT) {
     Serial.println("Transmit mode not implemented yet.");
@@ -130,15 +127,21 @@ char* getMorseEntry(char letter) {
   return (char*) pgm_read_word(&morseTable[letter - 'A'].code);
 }
 
-void learn() {
+void practice() {
   String input = "";
-  while (currentMode == LEARN) {
+  while (currentMode == LEARN || currentMode == TEST) {
     char letter = nextLetter();
     String morseCode = getMorseEntry(letter);
-    String displayString = String(letter) + ": " + morseCode;
+    String displayString;
+    if (currentMode == LEARN) {
+      displayString = String(letter) + ": " + morseCode;
+    } else { // TEST
+      displayString = String(letter);
+    }
     display(displayString);
 
-    while (input != morseCode && currentMode == LEARN) {
+    while (input != morseCode && (currentMode == LEARN || currentMode == TEST)) {
+      modeSelect();
       char buttonPress = detectButtonPress();
       
       if (buttonPress == 'd' || buttonPress == '\0') {
@@ -149,13 +152,11 @@ void learn() {
         input = ""; // Reset input state
         continue; // Refresh input state
       }
-      
-      // If a valid button press is detected, append it to the input string
       else if (buttonPress == '.' || buttonPress == '-') {
         input += buttonPress;
         Serial.print(buttonPress);
         if (input == morseCode) {
-          Serial.println(" - Correct input!");
+          Serial.println(" : Correct input!");
           input = ""; // Reset input after correct entry
           morseCode = ""; // Reset morseCode to empty to trigger while loop exit 
         }
@@ -170,7 +171,7 @@ char nextLetter() {
 }
 
 void display(String message ) {
-  Serial.println();
+  Serial.println(message);
 }
 
 void modeSelect() {
