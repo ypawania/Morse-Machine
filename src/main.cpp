@@ -128,8 +128,12 @@ void learn() {
   Serial.println("Entering learn mode...");
   while (learnMode) {
     char letter = nextLetter();
-    char* morseCode = getMorseEntry(letter);
-    display(letter, morseCode);
+    String morseCode = getMorseEntry(letter);
+    String displayString = String(letter);
+    if (!testMode){
+      displayString += ": " + morseCode;
+    }
+    display(displayString);
     
     while (input != morseCode && learnMode) {
       modeSelect(); // Check the mode in case it has changed
@@ -163,10 +167,8 @@ char nextLetter() {
   return randomIndex + 'A'; 
 }
 
-void display(char letter, char* morseCode) {
-  Serial.print(letter);
-  Serial.print(": ");
-  Serial.println(morseCode);
+void display(String message ) {
+  Serial.println();
 }
 
 void modeSelect() {
