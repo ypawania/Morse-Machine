@@ -1,10 +1,10 @@
 #include <Arduino.h>
 #include <avr/pgmspace.h> // For storing strings in program memory
+#include <LiquidCrystal.h>
 
 //Arduino pin definations
 #define MORSE_IN 8
 #define MODE_SELECT_PIN A0
-#define SUBMIT_BUTTON_PIN 12
 
 //Function declarations
 char detectButtonPress();
@@ -27,11 +27,15 @@ enum Mode {
 
 Mode currentMode = NONE;
 
+// LCD pin configuration: RS, E, D4, D5, D6, D7
+LiquidCrystal lcd(7, 6, 5, 4, 3, 2);
+
 void setup() {
   Serial.begin(9600);
   pinMode(LED_BUILTIN, OUTPUT);
   pinMode(MORSE_IN, INPUT);
-  pinMode(SUBMIT_BUTTON_PIN, INPUT); // No pullup, using external pulldown
+  lcd.begin(16, 2); // Initialize a 16x2 LCD
+  lcd.clear();
 }
 
 void loop() {
@@ -42,12 +46,15 @@ void loop() {
   char letter = nextLetter();
   String morseCode = getMorseEntry(letter);
 
-  // construct display strong based on mode
+  // construct display string based on mode
   String displayString = String(letter);
   if (currentMode == LEARN) {
-    displayString += ": " + morseCode;  
+    displayString += ": " + morseCode;
   }
-  display(displayString);
+  // Display the target on the LCD (first line)
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print(displayString);
 
   while (input != morseCode) {
     modeSelect();
@@ -55,12 +62,11 @@ void loop() {
       break; // Exit the while loop if mode changes
     }
     char buttonPress = detectButtonPress();
-
-    // 3. Read the submit button state and detect rising edge
-    static bool prevSubmitPressed = false;
-    bool submitPressed = digitalRead(SUBMIT_BUTTON_PIN); // HIGH when pressed, LOW when not
-    bool submitJustPressed = submitPressed && !prevSubmitPressed;
-    prevSubmitPressed = submitPressed;
+    // Show user input on second line
+    lcd.setCursor(0, 1);
+    lcd.print("                "); // Clear second line
+    lcd.setCursor(0, 1);
+    lcd.print(input);
 
     if (buttonPress == 'd' || buttonPress == '\0') {
       continue; // debounce, ignore this press
@@ -73,23 +79,15 @@ void loop() {
     else if (buttonPress == '.' || buttonPress == '-') {
       input += buttonPress;
       Serial.print(buttonPress);
-      if (currentMode == LEARN && input == morseCode) {
+      
+      if (input == morseCode) {
         Serial.println(" : Correct input!");
+        // Optionally, you can show a success message on the LCD here
+        // lcd.setCursor(0, 1);
+        // lcd.print("Correct!");
         input = ""; // Reset input after correct entry
         morseCode = ""; // Reset morseCode to empty to trigger while loop exit 
       }
-    }
-
-    // 4. Only compare in TEST mode when submit button is just pressed (edge detection)
-    if (currentMode == TEST && submitJustPressed) {
-      if (input == morseCode) {
-        Serial.println(" : Correct input!");
-      } else {
-        Serial.println(" : Incorrect input!");
-      }
-      input = ""; // Reset input after checking
-      morseCode = ""; // Reset morseCode to empty to trigger while loop exit 
-      delay(300); // Simple debounce for submit button
     }
   }
 }
@@ -181,7 +179,7 @@ char nextLetter() {
 }
 
 void display(String message ) {
-  Serial.println(message);
+  // Now handled by LCD logic above, so this can be empty or used for debug
 }
 
 void modeSelect() {
