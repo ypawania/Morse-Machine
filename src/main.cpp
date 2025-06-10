@@ -4,6 +4,7 @@
 //Arduino pin definations
 #define MORSE_IN 8
 #define MODE_SELECT_PIN A0
+#define SUBMIT_BUTTON_PIN 12
 
 //Function declarations
 char detectButtonPress();
@@ -30,6 +31,7 @@ void setup() {
   Serial.begin(9600);
   pinMode(LED_BUILTIN, OUTPUT);
   pinMode(MORSE_IN, INPUT);
+  pinMode(SUBMIT_BUTTON_PIN, INPUT); // No pullup, using external pulldown
 }
 
 void loop() {
@@ -54,6 +56,12 @@ void loop() {
     }
     char buttonPress = detectButtonPress();
 
+    // 3. Read the submit button state and detect rising edge
+    static bool prevSubmitPressed = false;
+    bool submitPressed = digitalRead(SUBMIT_BUTTON_PIN); // HIGH when pressed, LOW when not
+    bool submitJustPressed = submitPressed && !prevSubmitPressed;
+    prevSubmitPressed = submitPressed;
+
     if (buttonPress == 'd' || buttonPress == '\0') {
       continue; // debounce, ignore this press
     }
@@ -65,11 +73,23 @@ void loop() {
     else if (buttonPress == '.' || buttonPress == '-') {
       input += buttonPress;
       Serial.print(buttonPress);
-      if (input == morseCode) {
+      if (currentMode == LEARN && input == morseCode) {
         Serial.println(" : Correct input!");
         input = ""; // Reset input after correct entry
         morseCode = ""; // Reset morseCode to empty to trigger while loop exit 
       }
+    }
+
+    // 4. Only compare in TEST mode when submit button is just pressed (edge detection)
+    if (currentMode == TEST && submitJustPressed) {
+      if (input == morseCode) {
+        Serial.println(" : Correct input!");
+      } else {
+        Serial.println(" : Incorrect input!");
+      }
+      input = ""; // Reset input after checking
+      morseCode = ""; // Reset morseCode to empty to trigger while loop exit 
+      delay(300); // Simple debounce for submit button
     }
   }
 }
