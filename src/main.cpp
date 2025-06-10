@@ -59,6 +59,17 @@ void loop() {
   while (input != morseCode) {
     modeSelect();
     if (currentMode != previousMode) {
+      // Show mode change message on LCD
+      lcd.clear();
+      lcd.setCursor(0, 0);
+      if (currentMode == LEARN) {
+        lcd.print("Learn mode");
+      } else if (currentMode == TEST) {
+        lcd.print("Test mode");
+      } else {
+        lcd.print("Mode changed");
+      }
+      delay(700); // Show message for 1 second
       break; // Exit the while loop if mode changes
     }
     char buttonPress = detectButtonPress();
@@ -73,18 +84,21 @@ void loop() {
     }
     else if (buttonPress == 'r') {
       Serial.println("Refreshing input state...");
+      lcd.setCursor(0, 1);
+      lcd.print("refreshing input...");         
+      delay(400); // Show message for 1 second
       input = ""; // Reset input state
       continue; // Refresh input state
     }
     else if (buttonPress == '.' || buttonPress == '-') {
       input += buttonPress;
       Serial.print(buttonPress);
-      
       if (input == morseCode) {
         Serial.println(" : Correct input!");
-        // Optionally, you can show a success message on the LCD here
-        // lcd.setCursor(0, 1);
-        // lcd.print("Correct!");
+        // Show success message on LCD
+        lcd.setCursor(0, 1);
+        lcd.print("Correct!         ");
+        delay(400); // Show message for 1 second
         input = ""; // Reset input after correct entry
         morseCode = ""; // Reset morseCode to empty to trigger while loop exit 
       }
