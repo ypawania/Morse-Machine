@@ -5,6 +5,9 @@
 //Arduino pin definations
 #define MORSE_IN 8
 #define MODE_SELECT_PIN A0
+#define BUZZER_PIN 9
+#define GREEN_LED_PIN 10
+#define RED_LED_PIN 11
 
 //Function declarations
 char detectButtonPress();
@@ -34,6 +37,9 @@ void setup() {
   Serial.begin(9600);
   pinMode(LED_BUILTIN, OUTPUT);
   pinMode(MORSE_IN, INPUT);
+  pinMode(BUZZER_PIN, OUTPUT);
+  pinMode(GREEN_LED_PIN, OUTPUT);
+  pinMode(RED_LED_PIN, OUTPUT);
   lcd.begin(16, 2); // Initialize a 16x2 LCD
   lcd.clear();
 }
@@ -79,6 +85,17 @@ void loop() {
     lcd.setCursor(0, 1);
     lcd.print(input);
 
+    // Glow both LEDs while button is pressed
+    if (digitalRead(MORSE_IN) == HIGH) {
+      tone(BUZZER_PIN, 900); // Morse input tone
+      digitalWrite(GREEN_LED_PIN, HIGH);
+      digitalWrite(RED_LED_PIN, HIGH);
+    } else {
+      noTone(BUZZER_PIN);
+      digitalWrite(GREEN_LED_PIN, LOW);
+      digitalWrite(RED_LED_PIN, LOW);
+    }
+
     if (buttonPress == 'd' || buttonPress == '\0') {
       continue; // debounce, ignore this press
     }
@@ -98,12 +115,29 @@ void loop() {
         // Show success message on LCD
         lcd.setCursor(0, 1);
         lcd.print("Correct!         ");
+        tone(BUZZER_PIN, 1500, 300); // High pitch for correct
+        digitalWrite(GREEN_LED_PIN, HIGH);
+        digitalWrite(RED_LED_PIN, LOW);
         delay(400); // Show message for 1 second
+        noTone(BUZZER_PIN);
+        digitalWrite(GREEN_LED_PIN, LOW);
         input = ""; // Reset input after correct entry
         morseCode = ""; // Reset morseCode to empty to trigger while loop exit 
+      } else if (input.length() == morseCode.length()) {
+        // If input is wrong and length matches, show wrong
+        lcd.setCursor(0, 1);
+        lcd.print("Wrong!           ");
+        tone(BUZZER_PIN, 400, 500); // Low pitch for wrong
+        digitalWrite(GREEN_LED_PIN, LOW);
+        digitalWrite(RED_LED_PIN, HIGH);
+        delay(500);
+        noTone(BUZZER_PIN);
+        digitalWrite(RED_LED_PIN, LOW);
+        input = "";
       }
     }
   }
+  noTone(BUZZER_PIN); // Ensure buzzer is off after loop
 }
 
 
@@ -172,7 +206,8 @@ const morseEntry morseTable[] PROGMEM = {
   {'U', "..-"},
   {'V', "...-"},
   {'W', ".--"},
-  {'X', "-..-"},
+  {'X', "-..-"},  {'X', "-..-"},
+
   {'Y', "-.--"},
   {'Z', "--.."}
 };
