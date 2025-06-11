@@ -33,6 +33,8 @@ Mode currentMode = NONE;
 // LCD pin configuration: RS, E, D4, D5, D6, D7
 LiquidCrystal lcd(7, 6, 5, 4, 3, 2);
 
+int score = 0;
+
 void setup() {
   Serial.begin(9600);
   pinMode(LED_BUILTIN, OUTPUT);
@@ -118,6 +120,13 @@ void loop() {
         tone(BUZZER_PIN, 1500, 300); // High pitch for correct
         digitalWrite(GREEN_LED_PIN, HIGH);
         digitalWrite(RED_LED_PIN, LOW);
+        if (currentMode == TEST) {
+          score++;
+          lcd.setCursor(0, 1);
+          lcd.print("Score: ");
+          lcd.print(score);
+          delay(700);
+        }
         delay(400); // Show message for 1 second
         noTone(BUZZER_PIN);
         digitalWrite(GREEN_LED_PIN, LOW);
@@ -130,6 +139,15 @@ void loop() {
         tone(BUZZER_PIN, 400, 500); // Low pitch for wrong
         digitalWrite(GREEN_LED_PIN, LOW);
         digitalWrite(RED_LED_PIN, HIGH);
+        if (currentMode == TEST) {
+          score = 0;
+          lcd.setCursor(0, 1);
+          lcd.print("Score: 0        ");
+          delay(700);
+          lcd.setCursor(0, 1);
+          lcd.print("score reset     ");
+          delay(700);
+        }
         delay(500);
         noTone(BUZZER_PIN);
         digitalWrite(RED_LED_PIN, LOW);
